@@ -1,45 +1,61 @@
 import heapq
 from dataclasses import dataclass
 
-
-@dataclass
-class Edge:
-    to: int
-    dist: float
+import numpy as np
 
 
-def dijkstra(graph: list[list[Edge]], start: int, end: int) -> float:
-    distances: list[float] = [float("inf") for _ in range(len(graph))]
-    priority_queue: list[tuple[float, int]] = []
+def get_path(trace: list[int], point: int, target: int) -> list[int]:
+    result = [point]
+    while point != target:
+        point = trace[point]
+        result.append(point)
+    result.reverse()
+    return result
+
+
+def dijkstra(graph: np.ndarray, start: int, end: int) -> tuple[list[int], float]:
+    distances: list[float] = [np.inf for _ in range(len(graph))]
+    prev_node: list[int] = [-1 for _ in range(len(graph))]
+    priority_queue: list[tuple[float, int, int]] = []
+
     distances[start] = 0
+    prev_node[start] = start
 
-    for e in graph[start]:
-        heapq.heappush(priority_queue, (e.dist, e.to))
+    for i, e in enumerate(graph[start]):
+        if not np.isnan(e):
+            heapq.heappush(priority_queue, (e, i, start))
 
     while len(priority_queue):
-        dist, to = heapq.heappop(priority_queue)
+        dist, to, prev = heapq.heappop(priority_queue)
 
         if to == end:
-            return dist
+            prev_node[to] = prev
+            return get_path(prev_node, end, start), dist
 
-        if distances[to] != float("inf"):
+        if not np.isinf(distances[to]):
             continue
 
         distances[to] = dist
-        for e in graph[to]:
-            if distances[e.to] == float("inf"):
-                heapq.heappush(priority_queue, (dist + e.dist, e.to))
+        prev_node[to] = prev
 
-    return float("inf")
+        for i, e in [(i, e) for i, e in enumerate(graph[to]) if not np.isnan(i)]:
+            if np.isinf(distances[i]):
+                heapq.heappush(priority_queue, (dist + e, i, to))
+
+    return [], np.inf
 
 
 def main():
-    graph: list[list[Edge]] = [
-        [Edge(1, 3.7), Edge(2, 1.0)],
-        [Edge(0, 3.7), Edge(2, 0.5)],
-        [Edge(0, 1.0), Edge(1, 0.5)],
-    ]
-    print("Shortest Path:", dijkstra(graph, 0, 2))
+    g = np.array([
+        [np.nan, 4.5, np.nan, np.nan, np.nan],
+        [4.5, np.nan, 11.6, 24.3, 27.2],
+        [np.nan, 11.6, np.nan, 13.5, 7.5],
+        [np.nan, 24.3, 13.5, np.nan, 17.8],
+        [np.nan, 27.2, 7.5, 17.8, np.nan]
+    ])
+    path, cost = dijkstra(g, 0, 4)
+    print("Path:", path)
+    print("Cost:", cost)
 
 
 if __name__ == "__main__":
