@@ -1,16 +1,16 @@
+import time
+from typing import List, Set
+
 import numpy as np
 from numpy.random import choice
-from typing import List, Tuple, Set, TypeAlias
 
-Node: TypeAlias = int
-Path: TypeAlias = List[Node]
-PathCost: TypeAlias = Tuple[Path, float]
+from graph import Graph, Node, Path, PathCost, simple_graph
 
 
 class AntColony:
     def __init__(
         self,
-        graph: np.ndarray,
+        graph: Graph,
         n_ants: int,
         n_best: int,
         decay: float,
@@ -20,7 +20,7 @@ class AntColony:
         n_iter: int | None = None,
     ):
         self.graph = graph
-        self.pheromone = np.ones(graph.shape) / len(self.graph)
+        self.pheromone = np.zeros(shape=(graph.node_count, graph.node_count))
         self.n_ants = n_ants
         self.n_best = n_best
         self.n_iter = n_iter or 10
@@ -28,20 +28,28 @@ class AntColony:
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        self.nodes = list(range(len(graph)))
+        self.nodes = list(range(graph.node_count))
 
-    def run(self, start: Node, end: Node, n_iter: int | None = None) -> PathCost:
+        for arc in self.graph.all_arcs():
+            self.pheromone[arc.source, arc.target] = 1 / self.graph.node_count
+
+    def run(
+        self, start: Node | str, end: Node | str, n_iter: int | None = None
+    ) -> PathCost:
         if n_iter is None:
             n_iter = self.n_iter
         best: PathCost = ([], np.inf)
         for _ in range(n_iter):
-            paths = [self._build_path(start, end) for _ in range(self.n_ants)]
+            paths = [
+                self._build_path(self.graph.unalias(start), self.graph.unalias(end))
+                for _ in range(self.n_ants)
+            ]
             paths.sort(key=lambda x: x[1])
             self._spread_pheromone(paths[: self.n_best])
             if paths[0][1] < best[1]:
                 best = paths[0]
             self.pheromone *= self.decay
-        return [int(i) for i in best[0]], best[1]
+        return [self.graph.alias(int(i)) for i in best[0]], best[1]
 
     def _build_path(self, start: Node, end: Node) -> PathCost:
         path: Path = [start]
@@ -51,15 +59,24 @@ class AntColony:
         while current != end:
             move = self._select_move(current, visited)
             path.append(move)
-            total_cost += self.graph[current, move]
+            total_cost += self.graph.arc(current, move)
             visited.add(move)
             current = move
         return path, total_cost
 
     def _select_move(self, current: Node, visited: Set[Node]) -> Node | None:
+        arcs: list[int] = list(map(lambda x: x.target, self.graph.adjacent(current)))
+        lengths: list[float] = list(map(lambda x: x.cost, self.graph.adjacent(current)))
+
         pher = np.copy(self.pheromone[current])
         pher[list(visited)] = self.gamma
-        heur = np.where(np.isnan(self.graph[current]), 0, 1.0 / self.graph[current])
+        heur = np.array(
+            [
+                (lengths[arcs.index(i)] if i in arcs else 0)
+                for i in range(self.graph.node_count)
+            ]
+        )
+
         scores = pher**self.alpha * heur**self.beta
         prob = scores / scores.sum()
         return choice(self.nodes, p=prob)
@@ -69,18 +86,15 @@ class AntColony:
             if cost == np.inf:
                 continue
             for i in range(len(path) - 1):
-                self.pheromone[path[i], path[i + 1]] += (5.0 / self.decay) / (cost * self.n_ants)
+                self.pheromone[path[i]][path[i + 1]] += (5.0 / self.decay) / (
+                    cost * self.n_ants
+                )
 
 
 if __name__ == "__main__":
-    g = np.array([
-        [np.nan, 4.5, np.nan, np.nan, np.nan],
-        [4.5, np.nan, 11.6, 24.3, 27.2],
-        [np.nan, 11.6, np.nan, 13.5, 7.5],
-        [np.nan, 24.3, 13.5, np.nan, 17.8],
-        [np.nan, 27.2, 7.5, 17.8, np.nan]
-    ])
-    aco = AntColony(g, n_ants=2, n_best=10, decay=0.9)
-    path, cost = aco.run(0, 4, n_iter=5)
+    perf = time.perf_counter()
+    aco = AntColony(simple_graph, n_ants=10, n_best=2, decay=0.9)
+    path, cost = aco.run("A", "E", n_iter=5)
     print("Path:", path)
     print("Cost:", cost)
+    print("Took:", time.perf_counter() - perf, "s")

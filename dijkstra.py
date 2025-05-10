@@ -1,7 +1,9 @@
 import heapq
-from dataclasses import dataclass
+import time
 
 import numpy as np
+
+from graph import Graph, Node, PathCost, simple_graph
 
 
 def get_path(trace: list[int], point: int, target: int) -> list[int]:
@@ -13,50 +15,45 @@ def get_path(trace: list[int], point: int, target: int) -> list[int]:
     return result
 
 
-def dijkstra(graph: np.ndarray, start: int, end: int) -> tuple[list[int], float]:
-    distances: list[float] = [np.inf for _ in range(len(graph))]
-    prev_node: list[int] = [-1 for _ in range(len(graph))]
+def dijkstra(graph: Graph, start: Node | str, end: Node | str) -> PathCost:
+    start = graph.unalias(start)
+    end = graph.unalias(end)
+
+    distances: list[float] = [-1 for _ in range(graph.node_count)]
+    prev_node: list[int] = [-1 for _ in range(graph.node_count)]
     priority_queue: list[tuple[float, int, int]] = []
 
     distances[start] = 0
     prev_node[start] = start
 
-    for i, e in enumerate(graph[start]):
-        if not np.isnan(e):
-            heapq.heappush(priority_queue, (e, i, start))
+    for arc in graph.adjacent(start):
+        heapq.heappush(priority_queue, (arc.cost, arc.source, arc.target))
 
     while len(priority_queue):
-        dist, to, prev = heapq.heappop(priority_queue)
+        dist, source, target = heapq.heappop(priority_queue)
 
-        if to == end:
-            prev_node[to] = prev
-            return get_path(prev_node, end, start), dist
+        if target == end:
+            prev_node[end] = source
+            return [graph.alias(i) for i in get_path(prev_node, target, start)], dist
 
-        if not np.isinf(distances[to]):
+        if distances[target] != -1:
             continue
 
-        distances[to] = dist
-        prev_node[to] = prev
+        distances[target] = dist
+        prev_node[target] = source
 
-        for i, e in [(i, e) for i, e in enumerate(graph[to]) if not np.isnan(i)]:
-            if np.isinf(distances[i]):
-                heapq.heappush(priority_queue, (dist + e, i, to))
+        for edge in graph.adjacent(target):
+            if distances[edge.target] == -1:
+                heapq.heappush(
+                    priority_queue, (dist + edge.cost, edge.source, edge.target)
+                )
 
     return [], np.inf
 
 
-def main():
-    g = np.array([
-        [np.nan, 4.5, np.nan, np.nan, np.nan],
-        [4.5, np.nan, 11.6, 24.3, 27.2],
-        [np.nan, 11.6, np.nan, 13.5, 7.5],
-        [np.nan, 24.3, 13.5, np.nan, 17.8],
-        [np.nan, 27.2, 7.5, 17.8, np.nan]
-    ])
-    path, cost = dijkstra(g, 0, 4)
+if __name__ == "__main__":
+    perf = time.perf_counter()
+    path, cost = dijkstra(simple_graph, "A", "E")
     print("Path:", path)
     print("Cost:", cost)
-
-
-if __name__ == "__main__":
-    main()
+    print("Took:", time.perf_counter() - perf, "s")
