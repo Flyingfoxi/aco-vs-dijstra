@@ -18,7 +18,13 @@ class Arc:
 
 
 class Graph:
-    def __init__(self, node_count: int, aliases: list[str], shortest_path: float, bidirectional: bool = True):
+    def __init__(
+        self,
+        node_count: int,
+        aliases: list[str],
+        shortest_path: float,
+        bidirectional: bool = True,
+    ):
         self.paths: DirectedGraph = {i: [] for i in range(node_count)}
         self.aliases: list[str] = aliases
         self.node_count = node_count

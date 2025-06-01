@@ -2,7 +2,7 @@ import time
 
 from ant_colony import AntColony
 from dijkstra import dijkstra
-from graph import complex_graph, simple_graph, dynamic_graph
+from graph import complex_graph, dynamic_graph, simple_graph
 
 MAX_ACO_DIFFERENCE = 2
 
@@ -39,6 +39,7 @@ def main():
     for path, cost, iteration in aco.run("A", "E", n_iter=25):
         if abs(cost - complex_graph.shortest_path) < MAX_ACO_DIFFERENCE:
             break
+
     print("-- Simple Graph --")
     print(f"[path]: {', '.join(list(map(str, path)))}")
     print(f"[length]: {cost}")
@@ -51,6 +52,7 @@ def main():
     for path, cost, iteration in aco.run("A", "T", n_iter=250):
         if abs(cost - complex_graph.shortest_path) < MAX_ACO_DIFFERENCE:
             break
+
     print("-- Complex Graph --")
     print(f"[path]: {', '.join(list(map(str, path)))}")
     print(f"[length]: {cost:0.1f}")

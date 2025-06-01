@@ -4,7 +4,7 @@ from typing import Any, Generator, List, Set
 import numpy as np
 from numpy.random import choice
 
-from graph import complex_graph, Graph, Node, Path, PathCost, simple_graph
+from graph import Graph, Node, Path, PathCost, simple_graph
 
 
 class AntColony:
@@ -74,14 +74,16 @@ class AntColony:
         pher[list(visited)] = 0
         heur = np.array(
             [
-                (lengths[arcs.index(i)] if i in arcs else 0)
+                (lengths[arcs.index(i)] / 1 if i in arcs else 0)
                 for i in range(self.graph.node_count)
             ]
         )
+
         scores = pher**self.alpha * heur**self.beta
-        prob = scores / scores.sum()
         if scores.sum() == 0:
             return None
+
+        prob = scores / scores.sum()
         return choice(self.nodes, p=prob)
 
     def _spread_pheromone(self, paths: List[PathCost]) -> None:
@@ -99,8 +101,14 @@ class AntColony:
 
 if __name__ == "__main__":
     perf = time.perf_counter()
-    aco = AntColony(complex_graph, n_ants=25, n_best=2, decay=0.9)
-    path, cost = aco.run("A", "T", n_iter=50)
-    print("Path:", path)
-    print("Cost:", cost)
-    print("Took:", time.perf_counter() - perf, "s")
+    aco = AntColony(simple_graph, n_ants=10, n_best=2, decay=0.9)
+    iteration = None
+    for path, cost, iteration in aco.run("A", "E", n_iter=25):
+        if cost == simple_graph.shortest_path:
+            break
+
+    print("-- Simple Graph --")
+    print(f"[path]: {', '.join(list(map(str, path)))}")
+    print(f"[length]: {cost}")
+    print(f"[iter]: {iteration}")
+    print(f"[time]: {time.perf_counter() - perf:0.6f}")
