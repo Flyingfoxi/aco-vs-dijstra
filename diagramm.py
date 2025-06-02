@@ -68,6 +68,7 @@ def create_graph() -> None:
 
     plt.title("ACO & Dijkstra speed comparison")
     plt.ylabel("Duration [s]")
+    plt.xlabel("Simulation Number")
 
     ax.plot(test_data[0], label="ACO simple graph")
     ax.plot(test_data[1], label="ACO complex graph")
